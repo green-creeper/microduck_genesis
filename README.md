@@ -175,7 +175,57 @@ Now open **`http://127.0.0.1:8080/`** in your browser to access the full web coc
 
 ---
 
-## 3. Connecting Daemons Manually
+## 3. Simulation Environments & Scenes
+
+`microduck_genesis` provides full scene and environment compatibility with `microduck_rl`. Genesis World dynamically loads the appropriate static collision geometries, room layouts, and interactive props.
+
+Scenes can be chosen either via the `DUCK_SIM_SCENE` environment variable in `scripts/duck-sim` or via the `--scene` CLI flag in `genesis-duck-body`:
+
+```bash
+# Via scripts/duck-sim:
+DUCK_SIM_SCENE=apartment ./scripts/duck-sim
+
+# Or standalone via genesis-duck-body:
+uv run genesis-duck-body --scene apartment
+```
+
+### Available Scene Presets
+
+| Preset | Scenery Model | Description | Primary Use Case |
+|---|---|---|---|
+| `apartment` | [`apartment.xml`](src/microduck_genesis/robot/assets/apartment.xml) | Full 6-room indoor apartment ($7 \times 6\text{ m}$) with corridors, doors, walls (1.6 m), and distinct textured room floors. Spawns duck in corridor. | Autonomous navigation, indoor exploration, Monte Carlo localization (MCL), vision streaming |
+| `ball` | [`ball.xml`](src/microduck_genesis/robot/assets/ball.xml) | Infinite flat ground plane plus a free 6-DOF physical soccer ball ($70\text{ mm}$ diameter, $15\text{ g}$). | Testing dynamic ball interactions and left/right kick skills (`kick_left`, `kick_right`) |
+| `vslam` | [`vslam_room.xml`](src/microduck_genesis/robot/assets/vslam_room.xml) | Enclosed room with high-frequency structural floor/wall textures and visual landmarks. | Visual SLAM, optical flow, visual odometry, and feature tracking |
+| `default` / `scene` | [`scene.xml`](src/microduck_genesis/robot/assets/scene.xml) | Minimalist high-friction flat checkerboard ground plane. | Baseline locomotion tuning, gait balance verification, zero-clutter testing |
+
+### Apartment Layout & Architecture
+
+The apartment environment is designed for multi-room mobile robotics navigation and state estimation:
+
+```
+      +y=+3 ┌────────────┬─────┬─────────────┐
+            │  KITCHEN   │     │  BEDROOM    │
+            │            │ C   │             │
+      +y=+1 ├──────┐     │ O ──┼─────────────┤
+            │      │     │ R   │             │
+            │ LIV  │     │ R   │   OFFICE    │
+            │ ING  │     │ I   │             │
+      +y=-1 │ ROOM │     │ D ──┼─────────────┤
+            │      │     │ O   │             │
+            │      │     │ R   │  BATHROOM   │
+            │      │     │     │             │
+      +y=-3 └──────┴─────┴─────┴─────────────┘
+            x=-4   -1     0.5      +4
+```
+
+- **Corridor Spawn:** The duck is initialized at `(0.0, 0.0, 0.12)` in the central hallway facing forward.
+- **Asymmetric Doorways:** Interior door openings are offset to facilitate laser/ToF and visual localization.
+- **Wall Height & Visibility:** Wall heights are 1.6 m so the head camera never sees the skybox indoors.
+- **Sensor Parity:** Both the offscreen head camera (`DUCK_SIM_CAMERAS=a`) and the $8 \times 8$ VL53L5CX Time-of-Flight sensor (`tofd`) cast physical rays directly against room surfaces and furniture.
+
+---
+
+## 4. Connecting Daemons Manually
 
 Once the simulator is running in one terminal:
 ```bash
@@ -198,7 +248,7 @@ cargo run --bin mediad -- --sim-camera 127.0.0.1:7901 --robot-socket /tmp/duck.s
 
 ---
 
-## 4. Verifying with the Test Client
+## 5. Verifying with the Test Client
 
 You can verify the entire Protocol 1 lifecycle (handshake, joint reading, actuator commands, IMU gravity projection, and ToF depth) without running the real daemons:
 
@@ -212,7 +262,7 @@ uv run python scripts/test_client.py
 
 ---
 
-## 5. Interactive Standalone Policy Rehearsal (`genesis-infer`)
+## 6. Interactive Standalone Policy Rehearsal (`genesis-infer`)
 
 Run any exported walking or trick ONNX policy directly in Genesis with interactive keyboard controls:
 ```bash
@@ -229,7 +279,7 @@ uv run genesis-infer ../microduck_rl/walk.onnx
 
 ---
 
-## 6. Parallel Vectorized RL Environment
+## 7. Parallel Vectorized RL Environment
 
 To train locomotion policies with `rsl-rl` or interact with 1,024 parallel environments on your GPU/Metal compiler:
 
