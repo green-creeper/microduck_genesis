@@ -102,6 +102,11 @@ class World:
                         )
                         link = self.entities[idx].get_link("jaw_soft")
                         T = np.eye(4)
+                        # Rotate 90 degrees clockwise about optical roll axis to align upright with horizon
+                        T[0, 0] = 0.0
+                        T[0, 1] = 1.0
+                        T[1, 0] = -1.0
+                        T[1, 1] = 0.0
                         T[0, 3] = 0.0155
                         T[2, 3] = -0.055
                         cam.attach(link, offset_T=T)

@@ -132,8 +132,10 @@ INDEX_HTML = """<!DOCTYPE html>
     .main-grid { display: grid; grid-template-columns: 1fr; gap: 20px; width: 100%; max-width: 960px; }
     @media (min-width: 768px) { .main-grid { grid-template-columns: 640px 1fr; } }
     .video-card { background: #1a1d2e; border: 1px solid #2d3748; border-radius: 12px; overflow: hidden; position: relative; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-    .video-feed { width: 100%; height: auto; display: block; background: #000; aspect-ratio: 16/9; object-fit: contain; }
-    .video-overlay { position: absolute; top: 12px; left: 12px; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; color: #38bdf8; }
+    .video-feed { width: 100%; height: auto; display: block; background: #000; aspect-ratio: 16/9; object-fit: contain; transition: transform 0.2s ease-in-out; }
+    .video-overlay { position: absolute; top: 12px; left: 12px; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; color: #38bdf8; z-index: 5; }
+    .rotate-btn { position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); border: 1px solid #3b4261; border-radius: 6px; font-size: 11px; font-weight: 600; padding: 4px 8px; color: #f1f5f9; cursor: pointer; z-index: 10; display: flex; align-items: center; gap: 4px; }
+    .rotate-btn:hover { background: rgba(30,40,60,0.9); border-color: #60a5fa; color: #60a5fa; }
     .panel { background: #1a1d2e; border: 1px solid #2d3748; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 16px; }
     .section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; }
     .btn-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
@@ -161,6 +163,7 @@ INDEX_HTML = """<!DOCTYPE html>
   <div class="main-grid">
     <div class="video-card">
       <div class="video-overlay">640×360 UYVY · GENESIS</div>
+      <button class="rotate-btn" onclick="rotateView()" title="Rotate View 90°">🔄 Rotate 90°</button>
       <img class="video-feed" src="/stream.mjpg" alt="Live Camera Feed">
     </div>
 
@@ -195,7 +198,7 @@ INDEX_HTML = """<!DOCTYPE html>
       <div class="kbd-guide">
         <strong>Keyboard Shortcuts:</strong><br>
         <kbd>W</kbd>/<kbd>S</kbd>: Walk · <kbd>A</kbd>/<kbd>D</kbd>: Turn · <kbd>Space</kbd>: Stop<br>
-        <kbd>X</kbd>: Sit/Stand · <kbd>P</kbd>: Pick · <kbd>R</kbd>: Roll · <kbd>Q</kbd>: Quack
+        <kbd>X</kbd>: Sit/Stand · <kbd>P</kbd>: Pick · <kbd>R</kbd>: Roll · <kbd>Q</kbd>: Quack · <kbd>V</kbd>: Rotate
       </div>
     </div>
   </div>
@@ -249,9 +252,17 @@ INDEX_HTML = """<!DOCTYPE html>
       else if (k === "p") skill("ground_pick");
       else if (k === "r") skill("roulade");
       else if (k === "q") sound("chirp");
+      else if (k === "v") rotateView();
     });
 
     const imgEl = document.querySelector(".video-feed");
+    let currentRotation = 0;
+    function rotateView() {
+      currentRotation = (currentRotation + 90) % 360;
+      imgEl.style.transform = `rotate(${currentRotation}deg)`;
+      log(`View rotated: ${currentRotation}°`);
+    }
+
     let polling = false;
     function startPolling() {
       if (polling) return;
