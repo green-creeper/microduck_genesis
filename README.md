@@ -144,17 +144,34 @@ uv run genesis-teleop --duck duck-b
 
 ### Web Console & Live Camera Stream (`genesis-console`)
 
-To view the live first-person head camera stream in your browser on macOS or Linux without requiring GStreamer plugins:
+To view the live first-person head camera stream in your browser on macOS or Linux without requiring GStreamer or WebRTC plugins:
 
 ```bash
+# Terminal 1: Start the duck with camera enabled
+cd path/to/microduck
+export DUCK_SIM_RL=$(pwd)/../microduck_genesis
+DUCK_SIM_CAMERAS=a ./scripts/duck-sim
+
+# Terminal 2: Start the Web Console
 cd path/to/microduck_genesis
 uv run genesis-console
 ```
 
-Now open **`http://127.0.0.1:8080/`** in your browser to see:
-- Live $640 \times 360$ first-person video from the duck's eyes.
-- On-screen touch/mouse buttons and keyboard controls for walking, sitting/standing, kicks, roulade, and quacking.
-- Real-time motion and posture feedback.
+Now open **`http://127.0.0.1:8080/`** in your browser to access the full web cockpit:
+
+- **Upright First-Person Video:** $640 \times 360$ live stream rendered directly from the Genesis offscreen camera on the duck's `jaw_soft` link, with roll-axis correction aligned with the horizon.
+- **Universal Browser Compatibility:** Works out-of-the-box on macOS (Safari, Chrome, Arc, Brave) and Linux. Features Motion-JPEG streaming with automatic double-buffered image polling fallback for smooth, zero-flicker playback on WebKit.
+- **Instant Viewport Rotation:** Click the on-screen **"🔄 Rotate 90°"** button or press <kbd>V</kbd> to cycle the video view in $90^\circ$ increments on the fly.
+- **Interactive Teleoperation & Skills:** Drive the robot using the on-screen D-pad or keyboard shortcuts:
+  - <kbd>W</kbd> / <kbd>S</kbd>: Walk forward ($+0.35\text{ m/s}$) / backward ($-0.15\text{ m/s}$)
+  - <kbd>A</kbd> / <kbd>D</kbd>: Turn left / right ($\pm 0.40\text{ rad/s}$)
+  - <kbd>Space</kbd>: Emergency stop
+  - <kbd>X</kbd>: Sit ⇄ Stand posture toggle
+  - <kbd>P</kbd>: Ground Pick bow
+  - <kbd>R</kbd>: Roulade 360° roll
+  - <kbd>Q</kbd>: Quack / chirp sound
+  - <kbd>V</kbd>: Rotate camera view
+- **Telemetry & Feedback:** Real-time RPC status logs, connection indicator, and live FPS readout.
 
 ---
 
