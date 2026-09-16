@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 
 from microduck_genesis.constants import (
+    ASSETS_DIR,
     DEFAULT_ROBOT,
     DEFAULT_SCENE,
     KEYFRAMES,
@@ -75,9 +76,29 @@ class World:
             show_viewer=not headless,
         )
 
-        # Add ground plane with friction matching MuJoCo
+        # Add scenery or ground plane with friction matching MuJoCo
         plane_mat = gs.materials.Rigid(friction=1.0)
-        self.plane = self.scene.add_entity(gs.morphs.Plane(), material=plane_mat)
+        self.plane = None
+        self.scenery = None
+        scene_str = str(self.scene_path).lower() if self.scene_path else ""
+
+        if "apartment" in scene_str:
+            apt_file = ASSETS_DIR / "apartment.xml"
+            self.scenery = self.scene.add_entity(gs.morphs.MJCF(file=str(apt_file)))
+        elif "vslam" in scene_str:
+            vslam_file = ASSETS_DIR / "vslam_room.xml"
+            self.scenery = self.scene.add_entity(gs.morphs.MJCF(file=str(vslam_file)))
+        elif "ball" in scene_str:
+            self.plane = self.scene.add_entity(gs.morphs.Plane(), material=plane_mat)
+            ball_file = ASSETS_DIR / "ball.xml"
+            self.scenery = self.scene.add_entity(gs.morphs.MJCF(file=str(ball_file)))
+        elif self.scene_path and self.scene_path.name != "scene.xml" and self.scene_path.exists():
+            try:
+                self.scenery = self.scene.add_entity(gs.morphs.MJCF(file=str(self.scene_path)))
+            except Exception:
+                self.plane = self.scene.add_entity(gs.morphs.Plane(), material=plane_mat)
+        else:
+            self.plane = self.scene.add_entity(gs.morphs.Plane(), material=plane_mat)
 
         # Add robot entities (MJCF trunk_base already carries z=0.12)
         self.entities = []

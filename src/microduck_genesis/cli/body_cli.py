@@ -36,13 +36,18 @@ def parse_cameras(cameras_str: str, ducks: int) -> set[int]:
 
 
 def resolve_scene_path(scene_arg: str | Path) -> Path:
-    s = str(scene_arg)
-    if s == "apartment":
-        return SCENE_APARTMENT
+    s = str(scene_arg).strip()
+    if not s or s == "default":
+        return DEFAULT_SCENE
+    if "apartment" in s.lower():
+        return ASSETS_DIR / "apartment.xml"
+    if "vslam" in s.lower():
+        return ASSETS_DIR / "vslam_room.xml"
+    if "ball" in s.lower():
+        return ASSETS_DIR / "ball.xml"
     p = Path(s)
     if p.exists():
         return p
-    # Check inside assets directory
     in_assets = ASSETS_DIR / f"{s}.xml"
     if in_assets.exists():
         return in_assets
