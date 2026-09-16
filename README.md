@@ -104,6 +104,31 @@ DUCK_SIM_DUCKS=4 ./scripts/duck-sim
 - **Radio Mesh (`duck-ether`):** An inter-duck virtual radio network connects all active `robotd` daemons so they can exchange chorale and beacon packets.
 - **Early Socket Binding:** `microduck_genesis` binds all TCP server sockets immediately on launch while the Genesis scene compiles in parallel, ensuring `duck-sim`'s health probe (`wait_for_port`) passes reliably without timing out.
 
+### Keyboard Teleoperation (`genesis-teleop`)
+
+Once your duck simulation is running via `./scripts/duck-sim`, open a second terminal to drive the robot with your keyboard in real time:
+
+```bash
+cd path/to/microduck_genesis
+uv run genesis-teleop
+```
+
+For multi-duck setups, specify which duck to command:
+```bash
+uv run genesis-teleop --duck duck-b
+```
+
+**Keybindings:**
+| Key | Action |
+|---|---|
+| `W` / `▲ Up` | Walk Forward (accelerates $+0.05\text{ m/s}$; jumps to $0.30\text{ m/s}$ from standstill) |
+| `S` / `▼ Down` | Walk Backward / Decelerate ($-0.05\text{ m/s}$) |
+| `A` / `◀ Left` | Turn Left ($+0.20\text{ rad/s}$) |
+| `D` / `▶ Right` | Turn Right ($-0.20\text{ rad/s}$) |
+| `Space` | E-Stop / Stop Motion ($0.0\text{ m/s}$) |
+| `R` | Trick: Roulade |
+| `Q` / `Ctrl-C` | Quit Teleoperation |
+
 ---
 
 ## 3. Connecting Daemons Manually
@@ -129,7 +154,7 @@ cargo run --bin mediad -- --sim-camera 127.0.0.1:7901 --robot-socket /tmp/duck.s
 
 ---
 
-## 3. Verifying with the Test Client
+## 4. Verifying with the Test Client
 
 You can verify the entire Protocol 1 lifecycle (handshake, joint reading, actuator commands, IMU gravity projection, and ToF depth) without running the real daemons:
 
@@ -143,7 +168,7 @@ uv run python scripts/test_client.py
 
 ---
 
-## 4. Interactive Policy Rehearsal (`genesis-infer`)
+## 5. Interactive Standalone Policy Rehearsal (`genesis-infer`)
 
 Run any exported walking or trick ONNX policy directly in Genesis with interactive keyboard controls:
 ```bash
@@ -160,7 +185,7 @@ uv run genesis-infer ../microduck_rl/walk.onnx
 
 ---
 
-## 5. Parallel Vectorized RL Environment (`MicroduckEnv`)
+## 6. Parallel Vectorized RL Environment
 
 To train locomotion policies with `rsl-rl` or interact with 1,024 parallel environments on your GPU/Metal compiler:
 
@@ -236,10 +261,12 @@ microduck_genesis/
 │   │   └── env.py                     # Vectorized parallel RL locomotion environment
 │   ├── cli/
 │   │   ├── body_cli.py                # `genesis-duck-body` CLI entry point
-│   │   └── infer_cli.py               # `genesis-infer` CLI entry point
+│   │   ├── infer_cli.py               # `genesis-infer` CLI entry point
+│   │   └── teleop_cli.py              # `genesis-teleop` keyboard teleoperation CLI
 │   └── infer.py                       # Interactive ONNX policy runner
 ├── scripts/
 │   ├── run_body.py                    # Runner script
+│   ├── teleop.py                      # Interactive keyboard teleoperation script
 │   └── test_client.py                 # Protocol 1 verification client
 └── tests/
     ├── test_constants.py              # Constants and mapping tests
