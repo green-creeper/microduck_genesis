@@ -1,0 +1,42 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "microduck-genesis"
+version = "0.1.0"
+description = "Genesis World physics simulation for the Microduck bipedal robot"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.10, <3.14"
+authors = [
+    { name = "Pollen Robotics / Community contributors" }
+]
+dependencies = [
+    "genesis-world",
+    "torch>=2.2.0",
+    "numpy>=1.24.0",
+    "scipy>=1.12.0",
+    "onnxruntime>=1.18.0",
+]
+
+[project.optional-dependencies]
+rl = [
+    "rsl-rl-lib>=5.0.0",
+    "tensorboard>=2.15.0",
+]
+dev = [
+    "pytest>=8.0.0",
+]
+
+[project.scripts]
+genesis-duck-body = "microduck_genesis.cli.body_cli:main"
+duck-body = "microduck_genesis.cli.body_cli:main"
+genesis-infer = "microduck_genesis.cli.infer_cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/microduck_genesis", "src/mjlab_microduck"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
