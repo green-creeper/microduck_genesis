@@ -24,8 +24,8 @@ def gravity_in_trunk(quat: np.ndarray | list[float]) -> list[float]:
     quat: [w, x, y, z] scalar-first quaternion.
     """
     w, x, y, z = float(quat[0]), float(quat[1]), float(quat[2]), float(quat[3])
-    gx = -2.0 * (x * z + y * w)
-    gy = -2.0 * (y * z - x * w)
+    gx = 2.0 * (y * w - x * z)
+    gy = -2.0 * (x * w + y * z)
     gz = -(1.0 - 2.0 * (x * x + y * y))
     return [gx, gy, gz]
 
@@ -65,10 +65,10 @@ class Body:
                     self.actuator_dofs.append(start_dof + i)
                     self.to_wire.append(wire_idx)
 
-        # Baseline gains
-        self.base_kp = 50.0  # Genesis internal stiffness
-        self.base_kv = 2.0   # Genesis internal damping
-        self.max_torque = 1.5  # XL330 maximum torque (Nm)
+        # Baseline gains matching robot_groundcontact.xml (chosen_actuator: kp=0.55, kv=0.0, force=0.96)
+        self.base_kp = 0.55  # Position gain corresponding to 200 kp register
+        self.base_kv = 0.0   # Joint damping is modeled in passive joint properties
+        self.max_torque = 0.96  # XL330 maximum torque (Nm)
 
         self.released = limp
         self.torque_on = not limp
@@ -108,6 +108,7 @@ class Body:
                 # Set base link position and identity orientation
                 self.entity.set_pos(np.array([0.0, offset_y, trunk_z], dtype=np.float32))
                 self.entity.set_quat(np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32))
+                self.entity.zero_all_dofs_velocity()
             except Exception:
                 pass
 
@@ -122,6 +123,7 @@ class Body:
             try:
                 self.entity.set_dofs_position(initial_qpos, self.actuator_dofs)
                 self.entity.control_dofs_position(initial_qpos, self.actuator_dofs)
+                self.entity.zero_all_dofs_velocity()
             except Exception:
                 pass
 
@@ -130,12 +132,19 @@ class Body:
     def _remember_locked(self) -> None:
         try:
             pos = self.entity.get_pos()
+            quat = self.entity.get_quat()
+            dofs = self.entity.get_dofs_position(self.actuator_dofs)
             if hasattr(pos, "cpu"):
                 pos = pos.cpu().numpy()
-            dofs = self.entity.get_dofs_position(self.actuator_dofs)
+            if hasattr(quat, "cpu"):
+                quat = quat.cpu().numpy()
             if hasattr(dofs, "cpu"):
                 dofs = dofs.cpu().numpy()
-            self.held_state = (np.asarray(pos).copy(), np.asarray(dofs).copy())
+            self.held_state = (
+                np.asarray(pos).copy(),
+                np.asarray(quat).copy(),
+                np.asarray(dofs).copy(),
+            )
         except Exception:
             pass
 
@@ -149,10 +158,12 @@ class Body:
         with self.world.lock:
             if self.held_state is None or self.released:
                 return
-            pos, dofs = self.held_state
+            pos, quat, dofs = self.held_state
             try:
                 self.entity.set_pos(pos)
+                self.entity.set_quat(quat)
                 self.entity.set_dofs_position(dofs, self.actuator_dofs)
+                self.entity.zero_all_dofs_velocity()
             except Exception:
                 pass
 
@@ -169,35 +180,34 @@ class Body:
                 qpos = self.entity.get_dofs_position(self.actuator_dofs)
                 qvel = self.entity.get_dofs_velocity(self.actuator_dofs)
                 forces = self.entity.get_dofs_force(self.actuator_dofs)
+                all_dofs_vel = self.entity.get_dofs_velocity()
 
                 if hasattr(qpos, "cpu"):
                     qpos = qpos.cpu().numpy().flatten()
                     qvel = qvel.cpu().numpy().flatten()
                     forces = forces.cpu().numpy().flatten()
+                    all_dofs_vel = all_dofs_vel.cpu().numpy().flatten()
                 else:
                     qpos = np.asarray(qpos).flatten()
                     qvel = np.asarray(qvel).flatten()
                     forces = np.asarray(forces).flatten()
+                    all_dofs_vel = np.asarray(all_dofs_vel).flatten()
 
                 # Trunk base pose and velocities
                 pos = self.entity.get_pos()
                 quat = self.entity.get_quat()
-                vel = self.entity.get_links_vel(0) if hasattr(self.entity, "get_links_vel") else [0.0, 0.0, 0.0]
-                ang_vel = self.entity.get_links_ang_vel(0) if hasattr(self.entity, "get_links_ang_vel") else [0.0, 0.0, 0.0]
-
                 if hasattr(pos, "cpu"):
                     pos = pos.cpu().numpy().flatten()
                     quat = quat.cpu().numpy().flatten()
-                    ang_vel = ang_vel.cpu().numpy().flatten()
                 else:
                     pos = np.asarray(pos).flatten()
                     quat = np.asarray(quat).flatten()
-                    ang_vel = np.asarray(ang_vel).flatten()
 
                 trunk = [float(pos[0]), float(pos[1]), float(pos[2])]
                 trunk_z = float(pos[2])
                 quat_list = [float(quat[0]), float(quat[1]), float(quat[2]), float(quat[3])]
-                gyro = [float(ang_vel[0]), float(ang_vel[1]), float(ang_vel[2])]
+                # DOFs 3..5 of the freejoint are trunk angular velocity (gyro)
+                gyro = [float(all_dofs_vel[3]), float(all_dofs_vel[4]), float(all_dofs_vel[5])]
                 grav = gravity_in_trunk(quat_list)
                 sim_time = float(self.world.sim_time)
             except Exception:

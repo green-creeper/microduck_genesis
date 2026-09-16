@@ -17,12 +17,12 @@ def test_gravity_in_trunk():
     s = math.sqrt(0.5)
     g_roll90 = gravity_in_trunk([s, s, 0.0, 0.0])
     assert pytest.approx(g_roll90[0], abs=1e-5) == 0.0
-    assert pytest.approx(g_roll90[1], abs=1e-5) == 1.0
+    assert pytest.approx(g_roll90[1], abs=1e-5) == -1.0
     assert pytest.approx(g_roll90[2], abs=1e-5) == 0.0
 
     # 3. Pitch 90 deg about Y
     g_pitch90 = gravity_in_trunk([s, 0.0, s, 0.0])
-    assert pytest.approx(g_pitch90[0], abs=1e-5) == -1.0
+    assert pytest.approx(g_pitch90[0], abs=1e-5) == 1.0
     assert pytest.approx(g_pitch90[1], abs=1e-5) == 0.0
     assert pytest.approx(g_pitch90[2], abs=1e-5) == 0.0
 

@@ -23,11 +23,12 @@ from microduck_genesis.sim.camera import FPS as CAMERA_FPS
 class World:
     """The Genesis physics simulation, shared across all duck bodies in it."""
 
-    def __init__(self, scene_path: Path = DEFAULT_SCENE, robot_path: Path = DEFAULT_ROBOT, count: int = 1, headless: bool = False):
+    def __init__(self, scene_path: Path = DEFAULT_SCENE, robot_path: Path = DEFAULT_ROBOT, count: int = 1, headless: bool = False, keyframe: str = "SIT"):
         self.scene_path = Path(scene_path)
         self.robot_path = Path(robot_path)
         self.count = count
         self.headless = headless
+        self.keyframe = keyframe
         self.timestep = TIMESTEP
         self.sim_time = 0.0
         self.lock = threading.RLock()
@@ -35,11 +36,12 @@ class World:
 
         import genesis as gs
 
-        # Initialize Genesis
-        try:
-            gs.init(backend=gs.gpu, precision="32", logging_level="warning")
-        except Exception:
-            gs.init(backend=gs.cpu, precision="32", logging_level="warning")
+        # Initialize Genesis (CPU backend is 15x faster on Apple Silicon for single robot)
+        if not getattr(gs, "_initialized", False):
+            try:
+                gs.init(backend=gs.cpu, precision="32", logging_level="warning")
+            except Exception:
+                gs.init(precision="32", logging_level="warning")
 
         # Build Scene
         viewer_opt = None if headless else gs.options.ViewerOptions(
@@ -48,6 +50,7 @@ class World:
             camera_lookat=(0.0, 0.5, 0.2),
             camera_fov=40,
             refresh_rate=30,
+            realtime_factor=None,  # run_loop controls the 50 Hz wall-clock pacing
         )
 
         self.scene = gs.Scene(
@@ -66,13 +69,13 @@ class World:
         # Add ground plane
         self.plane = self.scene.add_entity(gs.morphs.Plane())
 
-        # Add robot entities
+        # Add robot entities (MJCF trunk_base already carries z=0.12)
         self.entities = []
         for i in range(count):
             entity = self.scene.add_entity(
                 gs.morphs.MJCF(
                     file=str(self.robot_path),
-                    pos=(0.0, i * SPACING, 0.12),
+                    pos=(0.0, i * SPACING, 0.0),
                 )
             )
             self.entities.append(entity)
@@ -81,9 +84,11 @@ class World:
         self.scene.build()
 
         # Wrap into Body instances
+        pose_dict, trunk_z = KEYFRAMES.get(keyframe, (None, 0.125))
         for i, entity in enumerate(self.entities):
             body = Body(self, entity, index=i)
             self.bodies.append(body)
+            body.place(pose_dict, trunk_z, offset_y=i * SPACING)
 
         # Warm up 1 step so JIT compiles before server opens and timing starts
         self.step(1)
@@ -92,8 +97,9 @@ class World:
     def step(self, times: int = SUBSTEPS) -> None:
         """Advance the world by `times` physics steps, protected by world lock."""
         with self.lock:
-            for _ in range(times):
-                self.scene.step()
+            for i in range(times):
+                is_last = (i == times - 1)
+                self.scene.step(update_visualizer=is_last)
                 self.sim_time += self.timestep
                 for body in self.bodies:
                     if not body.released:

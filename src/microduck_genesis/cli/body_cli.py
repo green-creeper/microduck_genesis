@@ -73,13 +73,18 @@ def main() -> None:
     wanted_cameras = parse_cameras(args.cameras, args.ducks)
 
     print(f"== Initializing Genesis World simulation ({args.ducks} duck(s), keyframe: {args.keyframe})...", flush=True)
-    world = World(scene_path=scene_path, robot_path=robot_path, count=args.ducks, headless=args.headless)
+    world = World(
+        scene_path=scene_path,
+        robot_path=robot_path,
+        count=args.ducks,
+        headless=args.headless,
+        keyframe=args.keyframe,
+    )
 
     pose_dict, trunk_z = KEYFRAMES.get(args.keyframe, (None, 0.125))
 
     servers = []
     for idx, body in enumerate(world.bodies):
-        body.place(pose_dict, trunk_z, offset_y=idx * SPACING)
         if args.limp:
             body.set_torque(False)
 
