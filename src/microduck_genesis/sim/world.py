@@ -46,8 +46,8 @@ class World:
         # Build Scene
         viewer_opt = None if headless else gs.options.ViewerOptions(
             res=(1280, 720),
-            camera_pos=(1.5, -2.0, 1.0),
-            camera_lookat=(0.0, 0.5, 0.2),
+            camera_pos=(1.0, -1.0, 0.45),
+            camera_lookat=(0.0, 0.0, 0.12),
             camera_fov=40,
             refresh_rate=30,
             realtime_factor=None,  # run_loop controls the 50 Hz wall-clock pacing
@@ -66,8 +66,9 @@ class World:
             show_viewer=not headless,
         )
 
-        # Add ground plane
-        self.plane = self.scene.add_entity(gs.morphs.Plane())
+        # Add ground plane with friction matching MuJoCo
+        plane_mat = gs.materials.Rigid(friction=1.0)
+        self.plane = self.scene.add_entity(gs.morphs.Plane(), material=plane_mat)
 
         # Add robot entities (MJCF trunk_base already carries z=0.12)
         self.entities = []
