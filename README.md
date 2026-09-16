@@ -2,6 +2,11 @@
 
 Physics simulation environment for the [Microduck bipedal robot](https://github.com/pollen-robotics/microduck), built on [Genesis World](https://github.com/Genesis-Embodied-AI/genesis-world).
 
+<p align="center">
+  <img src="media/genesis_simulation.png" alt="Microduck Genesis 3D Simulation" width="49%" />
+  <img src="media/genesis_web_console.png" alt="Microduck Genesis Web Console" width="49%" />
+</p>
+
 Provides drop-in simulation capabilities with full parity to [microduck_rl](https://github.com/pollen-robotics/microduck_rl):
 1. **TCP `duck-body` Server (`Protocol 1`)**: Serves simulated robot bodies to the real software daemons in [`microduck`](https://github.com/pollen-robotics/microduck) (`robotd --sim`, `tofd --sim`, `mediad --sim-camera`).
 2. **Interactive Policy Rehearsal (`genesis-infer`)**: Test trained ONNX policies with keyboard teleoperation in an interactive 3D Genesis viewer.
@@ -172,6 +177,10 @@ Now open **`http://127.0.0.1:8080/`** in your browser to access the full web coc
   - <kbd>Q</kbd>: Quack / chirp sound
   - <kbd>V</kbd>: Rotate camera view
 - **Telemetry & Feedback:** Real-time RPC status logs, connection indicator, and live FPS readout.
+
+<p align="center">
+  <img src="media/genesis_web_console.png" alt="Microduck Genesis Web Console & Cockpit" width="90%" />
+</p>
 
 ---
 
