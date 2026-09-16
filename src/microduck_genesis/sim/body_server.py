@@ -15,6 +15,10 @@ class Handler(socketserver.StreamRequestHandler):
 
     def handle(self) -> None:
         self.connection.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        if hasattr(self.server, "ready_event") and self.server.ready_event is not None:
+            self.server.ready_event.wait()
+        if not hasattr(self.server, "body") or self.server.body is None:
+            return
         body: Body = self.server.body
         print(f"== duck {body.index}: daemon connected from {self.client_address}", flush=True)
 
@@ -69,4 +73,5 @@ class Handler(socketserver.StreamRequestHandler):
 class Server(socketserver.ThreadingTCPServer):
     allow_reuse_address = True
     daemon_threads = True
-    body: Body
+    body: Body | None = None
+    ready_event: threading.Event | None = None

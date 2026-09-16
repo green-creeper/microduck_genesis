@@ -72,6 +72,16 @@ def main() -> None:
 
     wanted_cameras = parse_cameras(args.cameras, args.ducks)
 
+    # Bind TCP sockets early so wait_for_port succeeds immediately while Genesis compiles scene
+    servers = []
+    ready_event = threading.Event()
+    for idx in range(args.ducks):
+        body_server = Server((args.host, args.port + idx), Handler)
+        body_server.ready_event = ready_event
+        body_server.body = None
+        threading.Thread(target=body_server.serve_forever, daemon=True).start()
+        servers.append(body_server)
+
     print(f"== Initializing Genesis World simulation ({args.ducks} duck(s), keyframe: {args.keyframe})...", flush=True)
     world = World(
         scene_path=scene_path,
@@ -83,15 +93,11 @@ def main() -> None:
 
     pose_dict, trunk_z = KEYFRAMES.get(args.keyframe, (None, 0.125))
 
-    servers = []
     for idx, body in enumerate(world.bodies):
         if args.limp:
             body.set_torque(False)
 
-        body_server = Server((args.host, args.port + idx), Handler)
-        body_server.body = body
-        threading.Thread(target=body_server.serve_forever, daemon=True).start()
-        servers.append(body_server)
+        servers[idx].body = body
 
         # Optional camera frame server
         if idx in wanted_cameras:
@@ -104,6 +110,8 @@ def main() -> None:
 
         cam_info = f" · camera on {args.host}:{args.frame_port + idx}" if idx in wanted_cameras else ""
         print(f"==   duck {idx}: robotd --sim {args.host}:{args.port + idx}{cam_info}", flush=True)
+
+    ready_event.set()
 
     print(f"== Genesis simulation running. Press Ctrl+C to stop.", flush=True)
     run_loop(world, headless=args.headless)
