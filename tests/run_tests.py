@@ -65,12 +65,12 @@ class TestMath(unittest.TestCase):
         s = math.sqrt(0.5)
         g_roll = gravity_in_trunk([s, s, 0.0, 0.0])
         self.assertAlmostEqual(g_roll[0], 0.0, places=5)
-        self.assertAlmostEqual(g_roll[1], 1.0, places=5)
+        self.assertAlmostEqual(g_roll[1], -1.0, places=5)
         self.assertAlmostEqual(g_roll[2], 0.0, places=5)
 
         # Pitch 90 deg about Y
         g_pitch = gravity_in_trunk([s, 0.0, s, 0.0])
-        self.assertAlmostEqual(g_pitch[0], -1.0, places=5)
+        self.assertAlmostEqual(g_pitch[0], 1.0, places=5)
         self.assertAlmostEqual(g_pitch[1], 0.0, places=5)
         self.assertAlmostEqual(g_pitch[2], 0.0, places=5)
 

@@ -66,11 +66,15 @@ export DUCK_SIM_RL=$(pwd)/../microduck_genesis
 
 From there, all standard commands work identically:
 ```bash
-./scripts/duck-sim drive        # walk forward 8 seconds
+./scripts/duck-sim drive 0.30   # walk forward 8 seconds (0.30 m/s)
 ./scripts/duck-sim ctl health   # check daemon health (50 Hz control loop)
 ./scripts/duck-sim realtime     # report real-time physics factor (1.00x)
 ./scripts/duck-sim down         # cleanly shut down simulator and daemons
 ```
+
+> [!NOTE]
+> **Walking Policy Gait Initiation Threshold (`alpha_walking.onnx`):**
+> In both MuJoCo and Genesis, the reinforcement-learning trained walking policy has a velocity threshold ($\sim 0.24\text{ m/s}$). Commands below this speed (such as the default `0.15` in bare `./scripts/duck-sim drive`) cause the policy to balance upright and sway in-place without lifting feet. Specifying `0.25` or `0.30` (e.g. `./scripts/duck-sim drive 0.30`) triggers full alternating forward strides.
 
 > [!TIP]
 > You can also pass standard flags like `DUCK_SIM_VIEWER=0 ./scripts/duck-sim` for headless execution, `DUCK_SIM_DUCKS=4 ./scripts/duck-sim` for multi-robot simulation, or `DUCK_SIM_SCENE=apartment ./scripts/duck-sim`.
