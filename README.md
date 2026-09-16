@@ -142,6 +142,20 @@ uv run genesis-teleop --duck duck-b
 | **Multi-Duck Selection** | `1`–`4` | Switch active duck (`duck-a`, `duck-b`, `duck-c`, `duck-d`) |
 | **Exit** | `Esc` / `Ctrl-C` | Exit Teleoperation cleanly |
 
+### Web Console & Live Camera Stream (`genesis-console`)
+
+To view the live first-person head camera stream in your browser on macOS or Linux without requiring GStreamer plugins:
+
+```bash
+cd path/to/microduck_genesis
+uv run genesis-console
+```
+
+Now open **`http://127.0.0.1:8080/`** in your browser to see:
+- Live $640 \times 360$ first-person video from the duck's eyes.
+- On-screen touch/mouse buttons and keyboard controls for walking, sitting/standing, kicks, roulade, and quacking.
+- Real-time motion and posture feedback.
+
 ---
 
 ## 3. Connecting Daemons Manually
@@ -274,10 +288,12 @@ microduck_genesis/
 │   │   └── env.py                     # Vectorized parallel RL locomotion environment
 │   ├── cli/
 │   │   ├── body_cli.py                # `genesis-duck-body` CLI entry point
+│   │   ├── console_cli.py             # `genesis-console` web camera viewer CLI
 │   │   ├── infer_cli.py               # `genesis-infer` CLI entry point
 │   │   └── teleop_cli.py              # `genesis-teleop` keyboard teleoperation CLI
 │   └── infer.py                       # Interactive ONNX policy runner
 ├── scripts/
+│   ├── console.py                     # Web console runner script
 │   ├── run_body.py                    # Runner script
 │   ├── teleop.py                      # Interactive keyboard teleoperation script
 │   └── test_client.py                 # Protocol 1 verification client

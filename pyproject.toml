@@ -34,6 +34,8 @@ genesis-duck-body = "microduck_genesis.cli.body_cli:main"
 duck-body = "microduck_genesis.cli.body_cli:main"
 genesis-infer = "microduck_genesis.cli.infer_cli:main"
 genesis-teleop = "microduck_genesis.cli.teleop_cli:main"
+genesis-console = "microduck_genesis.cli.console_cli:main"
+genesis-camera = "microduck_genesis.cli.console_cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/microduck_genesis", "src/mjlab_microduck"]
