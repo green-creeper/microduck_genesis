@@ -35,43 +35,24 @@ def to_uyvy(rgb: np.ndarray) -> bytes:
 
 
 class Camera:
-    """Head camera rendered on demand via Genesis offscreen sensor."""
+    """Head camera rendered on demand via Genesis Camera object."""
 
-    def __init__(self, scene, entity, link_name: str = "bottom_head_shell", width: int = WIDTH, height: int = HEIGHT):
+    def __init__(self, cam_handle, width: int = WIDTH, height: int = HEIGHT):
+        self.cam_handle = cam_handle
         self.width = width
         self.height = height
         self.latest: bytes | None = None
         self.lock = threading.Lock()
-        self.sensor_handle = None
-
-        try:
-            import genesis as gs
-
-            link = entity.get_link(link_name)
-            self.sensor_handle = scene.add_sensor(
-                gs.sensors.RasterizerCameraOptions(
-                    res=(width, height),
-                    fov=60.0,
-                    entity_idx=entity.idx,
-                    link_idx_local=link.idx_local,
-                    pos=(0.04, 0.0, 0.015),
-                    lookat=(0.5, 0.0, 0.015),
-                )
-            )
-        except Exception as e:
-            # Fallback for headless environments without GPU offscreen rasterizer
-            self.sensor_handle = None
 
     def render(self) -> None:
         """Render one frame and update the latest UYVY buffer."""
-        if self.sensor_handle is not None:
+        if self.cam_handle is not None:
             try:
-                data = self.sensor_handle.read()
-                rgb = data.rgb
-                if hasattr(rgb, "cpu"):
-                    rgb_arr = rgb.cpu().numpy()
+                rgb_arr, _, _, _ = self.cam_handle.render(rgb=True)
+                if hasattr(rgb_arr, "cpu"):
+                    rgb_arr = rgb_arr.cpu().numpy()
                 else:
-                    rgb_arr = np.asarray(rgb)
+                    rgb_arr = np.asarray(rgb_arr)
                 if rgb_arr.ndim == 4:
                     rgb_arr = rgb_arr[0]
                 packed = to_uyvy(rgb_arr)

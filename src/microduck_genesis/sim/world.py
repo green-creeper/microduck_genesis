@@ -17,13 +17,21 @@ from microduck_genesis.constants import (
     TIMESTEP,
 )
 from microduck_genesis.sim.body import Body
-from microduck_genesis.sim.camera import FPS as CAMERA_FPS
+from microduck_genesis.sim.camera import Camera, FPS as CAMERA_FPS, HEIGHT as CAM_HEIGHT, WIDTH as CAM_WIDTH
 
 
 class World:
     """The Genesis physics simulation, shared across all duck bodies in it."""
 
-    def __init__(self, scene_path: Path = DEFAULT_SCENE, robot_path: Path = DEFAULT_ROBOT, count: int = 1, headless: bool = False, keyframe: str = "SIT"):
+    def __init__(
+        self,
+        scene_path: Path = DEFAULT_SCENE,
+        robot_path: Path = DEFAULT_ROBOT,
+        count: int = 1,
+        headless: bool = False,
+        keyframe: str = "SIT",
+        cameras: list[int] | None = None,
+    ):
         self.scene_path = Path(scene_path)
         self.robot_path = Path(robot_path)
         self.count = count
@@ -33,6 +41,7 @@ class World:
         self.sim_time = 0.0
         self.lock = threading.RLock()
         self.bodies: list[Body] = []
+        self.camera_handles = {}
 
         import genesis as gs
 
@@ -81,6 +90,25 @@ class World:
             )
             self.entities.append(entity)
 
+        # Add head cameras before scene build if requested
+        if cameras:
+            for idx in cameras:
+                if 0 <= idx < len(self.entities):
+                    try:
+                        cam = self.scene.add_camera(
+                            res=(CAM_WIDTH, CAM_HEIGHT),
+                            fov=60.0,
+                            GUI=False,
+                        )
+                        link = self.entities[idx].get_link("jaw_soft")
+                        T = np.eye(4)
+                        T[0, 3] = 0.0155
+                        T[2, 3] = -0.055
+                        cam.attach(link, offset_T=T)
+                        self.camera_handles[idx] = cam
+                    except Exception as e:
+                        print(f"== [!] Could not attach camera to duck {idx}: {e}", flush=True)
+
         # Build Genesis scene
         self.scene.build()
 
@@ -90,6 +118,8 @@ class World:
             body = Body(self, entity, index=i)
             self.bodies.append(body)
             body.place(pose_dict, trunk_z, offset_y=i * SPACING)
+            if i in self.camera_handles:
+                body.camera = Camera(self.camera_handles[i])
 
         # Warm up 1 step so JIT compiles before server opens and timing starts
         self.step(1)

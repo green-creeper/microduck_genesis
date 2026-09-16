@@ -89,6 +89,7 @@ def main() -> None:
         count=args.ducks,
         headless=args.headless,
         keyframe=args.keyframe,
+        cameras=wanted_cameras,
     )
 
     pose_dict, trunk_z = KEYFRAMES.get(args.keyframe, (None, 0.125))
@@ -100,8 +101,7 @@ def main() -> None:
         servers[idx].body = body
 
         # Optional camera frame server
-        if idx in wanted_cameras:
-            body.camera = Camera(world.scene, body.entity)
+        if idx in wanted_cameras and body.camera is not None:
             frame_server = FrameServer((args.host, args.frame_port + idx), FrameHandler)
             frame_server.camera = body.camera
             frame_server.fps = args.camera_fps

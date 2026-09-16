@@ -81,6 +81,23 @@ class TestMath(unittest.TestCase):
         uyvy = to_uyvy(rgb)
         self.assertEqual(len(uyvy), 640 * 360 * 2)
 
+    def test_camera_and_jpeg(self):
+        from microduck_genesis.sim.camera import Camera
+        from microduck_genesis.cli.console_cli import CameraReceiver
+        import numpy as np
+
+        cam = Camera(cam_handle=None)
+        cam.render()
+        f = cam.frame()
+        self.assertIsNotNone(f)
+        self.assertEqual(len(f), 640 * 360 * 2)
+
+        jpeg = CameraReceiver._uyvy_to_jpeg(f)
+        self.assertTrue(jpeg.startswith(b"\xff\xd8"))  # JPEG SOI marker
+        self.assertTrue(jpeg.endswith(b"\xff\xd9"))    # JPEG EOI marker
+        placeholder = CameraReceiver._make_placeholder("Test")
+        self.assertTrue(placeholder.startswith(b"\xff\xd8"))
+
 
 class MockBody:
     def __init__(self):

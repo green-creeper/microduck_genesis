@@ -13,7 +13,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw
 
 DEFAULT_STATE_DIR = Path(os.environ.get("DUCK_SIM_STATE", Path.home() / ".cache" / "duck-sim"))
 
@@ -25,10 +25,19 @@ class CameraReceiver:
         self.host = host
         self.port = port
         self.period = 1.0 / max(1, fps)
-        self.latest_jpeg: bytes | None = None
+        self.latest_jpeg: bytes = self._make_placeholder(f"Connecting to Camera ({host}:{port})...")
         self.lock = threading.Lock()
         self.running = True
         self.connected = False
+
+    @staticmethod
+    def _make_placeholder(text: str) -> bytes:
+        img = Image.new("RGB", (640, 360), color=(20, 24, 33))
+        d = ImageDraw.Draw(img)
+        d.text((200, 170), text, fill=(160, 175, 195))
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=80)
+        return buf.getvalue()
 
     def start(self) -> None:
         thread = threading.Thread(target=self._run, daemon=True)
@@ -241,6 +250,23 @@ INDEX_HTML = """<!DOCTYPE html>
       else if (k === "r") skill("roulade");
       else if (k === "q") sound("chirp");
     });
+
+    const imgEl = document.querySelector(".video-feed");
+    let polling = false;
+    function startPolling() {
+      if (polling) return;
+      polling = true;
+      setInterval(() => {
+        const next = new Image();
+        next.onload = () => { imgEl.src = next.src; };
+        next.src = "/frame.jpg?t=" + Date.now();
+      }, 66);
+    }
+    imgEl.addEventListener("error", startPolling);
+    // Safari / WebKit does not reliably handle multipart/x-mixed-replace in <img> tags
+    if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent)) {
+      startPolling();
+    }
   </script>
 </body>
 </html>
@@ -278,22 +304,38 @@ class ConsoleHandler(BaseHTTPRequestHandler):
             self.send_header("Age", "0")
             self.send_header("Cache-Control", "no-cache, private")
             self.send_header("Pragma", "no-cache")
-            self.send_header("Content-Type", "multipart/x-mixed-replace; boundary=FRAME")
+            self.send_header("Content-Type", "multipart/x-mixed-replace; boundary=frame")
             self.end_headers()
 
             try:
                 while True:
                     frame = self.camera.get_frame()
                     if frame is not None:
-                        self.wfile.write(b"--FRAME\r\n")
-                        self.send_header("Content-Type", "image/jpeg")
-                        self.send_header("Content-Length", str(len(frame)))
-                        self.end_headers()
-                        self.wfile.write(frame)
-                        self.wfile.write(b"\r\n")
+                        self.wfile.write(
+                            b"--frame\r\n"
+                            b"Content-Type: image/jpeg\r\n"
+                            + f"Content-Length: {len(frame)}\r\n\r\n".encode("ascii")
+                            + frame
+                            + b"\r\n"
+                        )
+                        self.wfile.flush()
                     time.sleep(0.05)
             except (ConnectionResetError, BrokenPipeError):
                 pass
+            return
+
+        if self.path.startswith("/frame.jpg"):
+            frame = self.camera.get_frame()
+            if frame is not None:
+                self.send_response(200)
+                self.send_header("Content-Type", "image/jpeg")
+                self.send_header("Content-Length", str(len(frame)))
+                self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+                self.end_headers()
+                self.wfile.write(frame)
+            else:
+                self.send_response(503)
+                self.end_headers()
             return
 
         self.send_response(404)
