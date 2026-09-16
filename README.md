@@ -2,8 +2,8 @@
 
 Physics simulation environment for the [Microduck bipedal robot](https://github.com/pollen-robotics/microduck), built on [Genesis World](https://github.com/Genesis-Embodied-AI/genesis-world).
 
-Provides drop-in simulation capabilities with full parity to `microduck_rl`:
-1. **TCP `duck-body` Server (`Protocol 1`)**: Serves simulated robot bodies to the real software daemons in `microduck` (`robotd --sim`, `tofd --sim`, `mediad --sim-camera`).
+Provides drop-in simulation capabilities with full parity to [microduck_rl](https://github.com/pollen-robotics/microduck_rl):
+1. **TCP `duck-body` Server (`Protocol 1`)**: Serves simulated robot bodies to the real software daemons in [`microduck`](https://github.com/pollen-robotics/microduck) (`robotd --sim`, `tofd --sim`, `mediad --sim-camera`).
 2. **Interactive Policy Rehearsal (`genesis-infer`)**: Test trained ONNX policies with keyboard teleoperation in an interactive 3D Genesis viewer.
 3. **Vectorized Reinforcement Learning**: High-throughput parallel environment (`MicroduckEnv`) leveraging GPU/Metal compilation.
 
@@ -237,3 +237,12 @@ Or run the fast standalone test suite:
 ```bash
 uv run python tests/run_tests.py
 ```
+
+---
+
+## Related Projects
+
+- [**microduck**](https://github.com/pollen-robotics/microduck): Official daemon, firmware, and control stack (`robotd`, `tofd`, `mediad`, `robotctl`) for the Microduck robot.
+- [**microduck_rl**](https://github.com/pollen-robotics/microduck_rl): Reinforcement learning training environments, MuJoCo simulation, and official ONNX policies.
+- [**genesis-world**](https://github.com/Genesis-Embodied-AI/genesis-world): Generative world and physics simulation platform for embodied AI and robotics.
+
