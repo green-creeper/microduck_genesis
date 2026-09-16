@@ -119,15 +119,28 @@ uv run genesis-teleop --duck duck-b
 ```
 
 **Keybindings:**
-| Key | Action |
-|---|---|
-| `W` / `▲ Up` | Walk Forward (accelerates $+0.05\text{ m/s}$; jumps to $0.30\text{ m/s}$ from standstill) |
-| `S` / `▼ Down` | Walk Backward / Decelerate ($-0.05\text{ m/s}$) |
-| `A` / `◀ Left` | Turn Left ($+0.20\text{ rad/s}$) |
-| `D` / `▶ Right` | Turn Right ($-0.20\text{ rad/s}$) |
-| `Space` | E-Stop / Stop Motion ($0.0\text{ m/s}$) |
-| `R` | Trick: Roulade |
-| `Q` / `Ctrl-C` | Quit Teleoperation |
+
+| Category | Key | Action |
+|---|---|---|
+| **Locomotion** | `W` / `▲ Up` | Walk Forward (accelerates $+0.05\text{ m/s}$; starts at $0.30\text{ m/s}$) |
+| | `S` / `▼ Down` | Walk Backward / Decelerate ($-0.05\text{ m/s}$) |
+| | `A` / `◀ Left` | Turn Left ($+0.20\text{ rad/s}$) |
+| | `D` / `▶ Right` | Turn Right ($-0.20\text{ rad/s}$) |
+| | `Space` | E-Stop / Stop Motion ($0.0\text{ m/s}$) |
+| **Postures & Skills** | `X` | **Sit ⇄ Stand Toggle** (`sit_toggle` via `alpha_sitstand.onnx`) |
+| | `P` | **Ground Pick / Bow** (`ground_pick` via `alpha_ground_pick.onnx`) |
+| | `J` | **Left Kick** (`kick_left` via `ball_kick_left.onnx`) |
+| | `K` | **Right Kick** (`kick_right` via `ball_kick_right.onnx`) |
+| | `R` | **Roulade Somersault** (`roulade` 360° roll) |
+| **Head Camera Gaze** | `I` / `M` | Look Up / Look Down |
+| | `U` / `O` | Look Left / Look Right |
+| | `C` | Center Head Straight Ahead |
+| **Vocalizations** | `Q` / `F` | 🦆 **Quack!** (`chirp`) |
+| | `G` | Greet (`greet` wak-wak) |
+| | `H` | Honk / Alarm (`alarm`) |
+| | `Z` | Coo / Purr (`coo`) |
+| **Multi-Duck Selection** | `1`–`4` | Switch active duck (`duck-a`, `duck-b`, `duck-c`, `duck-d`) |
+| **Exit** | `Esc` / `Ctrl-C` | Exit Teleoperation cleanly |
 
 ---
 

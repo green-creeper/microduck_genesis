@@ -53,6 +53,10 @@ class Teleop:
         self.vyaw = 0.0
         self.running = True
         self.lock = threading.Lock()
+        self.last_action_msg = ""
+        self.current_duck_name = self.sock_path.stem.replace(".sock", "")
+        if self.current_duck_name == "duck":
+            self.current_duck_name = "duck-a"
 
     def connect(self) -> None:
         if not self.sock_path.exists():
@@ -60,11 +64,32 @@ class Teleop:
                 f"Socket not found at {self.sock_path}.\n"
                 "Is the simulation running? Start it first with: ./scripts/duck-sim"
             )
+        if self.sock:
+            try:
+                self.sock.close()
+            except Exception:
+                pass
         self.sock = socket.socket(socket.AF_UNIX)
         self.sock.connect(str(self.sock_path))
         self.writer = self.sock.makefile("w")
 
-    def send_skill(self, skill: str) -> None:
+    def switch_duck(self, duck_name: str) -> None:
+        candidate = DEFAULT_STATE_DIR / f"{duck_name}.sock"
+        if not candidate.exists():
+            self.last_action_msg = f"[!] {duck_name}.sock not found"
+            return
+        with self.lock:
+            self.vx = 0.0
+            self.vyaw = 0.0
+            self.sock_path = candidate
+            self.current_duck_name = duck_name
+            try:
+                self.connect()
+                self.last_action_msg = f"Switched to {duck_name}"
+            except Exception as err:
+                self.last_action_msg = f"[!] Failed to switch: {err}"
+
+    def send_skill(self, skill: str, label: str) -> None:
         if not self.writer:
             return
         payload = json.dumps({
@@ -75,8 +100,39 @@ class Teleop:
         try:
             self.writer.write(payload)
             self.writer.flush()
+            self.last_action_msg = f"Skill: {label}"
         except Exception as err:
-            print(f"\n[!] Failed to send skill: {err}", flush=True)
+            self.last_action_msg = f"[!] Failed skill {label}: {err}"
+
+    def send_sound(self, tag: str, label: str) -> None:
+        if not self.writer:
+            return
+        payload = json.dumps({
+            "jsonrpc": "2.0",
+            "method": "robot.sound",
+            "params": {"tag": tag},
+        }) + "\n"
+        try:
+            self.writer.write(payload)
+            self.writer.flush()
+            self.last_action_msg = f"Sound: {label}"
+        except Exception as err:
+            self.last_action_msg = f"[!] Failed sound {label}: {err}"
+
+    def send_look(self, x: float, y: float, z: float, label: str) -> None:
+        if not self.writer:
+            return
+        payload = json.dumps({
+            "jsonrpc": "2.0",
+            "method": "robot.look",
+            "params": {"x": x, "y": y, "z": z},
+        }) + "\n"
+        try:
+            self.writer.write(payload)
+            self.writer.flush()
+            self.last_action_msg = f"Gaze: {label}"
+        except Exception as err:
+            self.last_action_msg = f"[!] Failed gaze: {err}"
 
     def _sender_loop(self) -> None:
         while self.running:
@@ -108,34 +164,49 @@ class Teleop:
         old_settings = termios.tcgetattr(fd)
 
         def print_banner():
-            print("\033[2J\033[H", end="")  # Clear screen
-            print("======================================================")
-            print("         Microduck Keyboard Teleoperation             ")
-            print("======================================================")
-            print(f"Connected to: {self.sock_path}")
-            print("\nControls:")
-            print("  [W] or [▲ Up]     : Walk Forward (+0.05 m/s, min 0.30)")
-            print("  [S] or [▼ Down]   : Walk Backward / Decel (-0.05 m/s)")
-            print("  [A] or [◀ Left]   : Turn Left (+0.20 rad/s)")
-            print("  [D] or [▶ Right]  : Turn Right (-0.20 rad/s)")
-            print("  [Space]           : Stop Motion (E-stop)")
-            print("  [R]               : Trick: Roulade")
-            print("  [Q] or [Ctrl-C]   : Quit\n")
-            print("------------------------------------------------------")
+            print("\033[2J\033[H", end="")  # Clear terminal
+            print("========================================================================")
+            print("                     Microduck Keyboard Cockpit                         ")
+            print("========================================================================")
+            print(f"Target: [{self.current_duck_name}]  (Socket: {self.sock_path})")
+            print("\n  [Locomotion]")
+            print("    [W] / [▲ Up]    : Walk Forward (+0.05 m/s, jump to 0.30 m/s)")
+            print("    [S] / [▼ Down]  : Walk Backward / Decelerate (-0.05 m/s)")
+            print("    [A] / [◀ Left]  : Turn Left (+0.20 rad/s)")
+            print("    [D] / [▶ Right] : Turn Right (-0.20 rad/s)")
+            print("    [Space]         : E-Stop / Stop Motion (0.0 m/s)")
+            print("\n  [Postures & Skills]")
+            print("    [X] : Sit ⇄ Stand Toggle (sit_toggle)")
+            print("    [P] : Ground Pick / Bow (ground_pick)")
+            print("    [J] : Left Kick (kick_left)")
+            print("    [K] : Right Kick (kick_right)")
+            print("    [R] : Roulade Somersault (roulade)")
+            print("\n  [Head Camera Gaze]")
+            print("    [I] : Look Up       [M] : Look Down")
+            print("    [U] : Look Left     [O] : Look Right    [C] : Center Head")
+            print("\n  [Sounds & Quacks]")
+            print("    [Q] / [F] : 🦆 Quack! (chirp)   [G] : Greet (wak-wak)")
+            print("    [H]       : Honk / Alarm         [Z] : Coo (sleepy)")
+            print("\n  [Duck Selector in Multi-Duck]")
+            print("    [1] duck-a   [2] duck-b   [3] duck-c   [4] duck-d")
+            print("\n  [Quit]")
+            print("    [Esc] / [Ctrl-C] : Exit cleanly")
+            print("========================================================================")
 
         print_banner()
 
         try:
             tty.setcbreak(fd)
-            last_status = ""
+            last_line = ""
 
             while True:
                 key = get_key(timeout=0.05)
                 if key:
                     with self.lock:
+                        # Movement
                         if key in ("w", "W", "up"):
                             if self.vx < 0.25:
-                                self.vx = 0.30  # Jump to forward gait threshold
+                                self.vx = 0.30  # Jump above RL walking deadband
                             else:
                                 self.vx = min(0.50, round(self.vx + 0.05, 2))
                         elif key in ("s", "S", "down"):
@@ -150,16 +221,56 @@ class Teleop:
                         elif key == " ":
                             self.vx = 0.0
                             self.vyaw = 0.0
+                            self.last_action_msg = "E-Stop (motion zeroed)"
+
+                        # Skills & Postures
+                        elif key in ("x", "X"):
+                            self.send_skill("sit_toggle", "Sit ⇄ Stand (sit_toggle)")
+                        elif key in ("p", "P"):
+                            self.send_skill("ground_pick", "Ground Pick (bow down)")
+                        elif key in ("j", "J"):
+                            self.send_skill("kick_left", "Left Kick (kick_left)")
+                        elif key in ("k", "K"):
+                            self.send_skill("kick_right", "Right Kick (kick_right)")
                         elif key in ("r", "R"):
-                            self.send_skill("roulade")
-                        elif key in ("q", "Q", "esc", "\x03"):
+                            self.send_skill("roulade", "Roulade Somersault (roulade)")
+
+                        # Head Gaze
+                        elif key in ("i", "I"):
+                            self.send_look(1.0, 0.0, 0.25, "Up")
+                        elif key in ("m", "M"):
+                            self.send_look(0.5, 0.0, -0.25, "Down")
+                        elif key in ("u", "U"):
+                            self.send_look(1.0, 0.4, 0.0, "Left")
+                        elif key in ("o", "O"):
+                            self.send_look(1.0, -0.4, 0.0, "Right")
+                        elif key in ("c", "C"):
+                            self.send_look(1.0, 0.0, 0.0, "Center")
+
+                        # Sounds
+                        elif key in ("q", "Q", "f", "F"):
+                            self.send_sound("chirp", "🦆 Quack! (chirp)")
+                        elif key in ("g", "G"):
+                            self.send_sound("greet", "Greet (wak-wak)")
+                        elif key in ("h", "H"):
+                            self.send_sound("alarm", "Honk / Alarm")
+                        elif key in ("z", "Z"):
+                            self.send_sound("coo", "Coo (purr)")
+
+                        # Duck Selector
+                        elif key in ("1", "2", "3", "4"):
+                            target = f"duck-{'abcd'[int(key) - 1]}"
+                            self.switch_duck(target)
+                            print_banner()
+
+                        # Exit
+                        elif key in ("esc", "\x03", "\x1b"):
                             break
 
                 with self.lock:
                     vx = self.vx
                     vyaw = self.vyaw
 
-                # Status indicator
                 if vx > 0:
                     motion = "▲ FORWARD"
                 elif vx < 0:
@@ -171,11 +282,12 @@ class Teleop:
                 else:
                     motion = "■ STOPPED"
 
-                status = f"\rStatus: {motion:<16} | vx: {vx:+.2f} m/s | vyaw: {vyaw:+.2f} rad/s   "
-                if status != last_status:
-                    sys.stdout.write(status)
+                act_msg = f" | {self.last_action_msg}" if self.last_action_msg else ""
+                line = f"\r[{self.current_duck_name}] {motion:<16} | vx: {vx:+.2f} m/s | vyaw: {vyaw:+.2f} rad/s{act_msg:<35}   "
+                if line != last_line:
+                    sys.stdout.write(line)
                     sys.stdout.flush()
-                    last_status = status
+                    last_line = line
 
         finally:
             self.running = False
@@ -186,7 +298,7 @@ class Teleop:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Keyboard teleoperation for Microduck robotd daemon")
+    parser = argparse.ArgumentParser(description="Keyboard cockpit for Microduck robotd daemon")
     parser.add_argument(
         "--socket",
         type=Path,
@@ -196,7 +308,7 @@ def main() -> None:
     parser.add_argument(
         "--duck",
         default="",
-        help="Specific duck name in multi-duck runs (e.g. duck-a, duck-b, duck-c)",
+        help="Specific duck name in multi-duck runs (e.g. duck-a, duck-b, duck-c, duck-d)",
     )
     args = parser.parse_args()
 
