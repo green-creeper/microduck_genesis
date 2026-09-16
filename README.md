@@ -77,7 +77,32 @@ From there, all standard commands work identically:
 > In both MuJoCo and Genesis, the reinforcement-learning trained walking policy has a velocity threshold ($\sim 0.24\text{ m/s}$). Commands below this speed (such as the default `0.15` in bare `./scripts/duck-sim drive`) cause the policy to balance upright and sway in-place without lifting feet. Specifying `0.25` or `0.30` (e.g. `./scripts/duck-sim drive 0.30`) triggers full alternating forward strides.
 
 > [!TIP]
-> You can also pass standard flags like `DUCK_SIM_VIEWER=0 ./scripts/duck-sim` for headless execution, `DUCK_SIM_DUCKS=4 ./scripts/duck-sim` for multi-robot simulation, or `DUCK_SIM_SCENE=apartment ./scripts/duck-sim`.
+> You can also pass standard flags like `DUCK_SIM_VIEWER=0 ./scripts/duck-sim` for headless execution or `DUCK_SIM_SCENE=apartment ./scripts/duck-sim`.
+
+### Multi-Robot Simulation (`DUCK_SIM_DUCKS`)
+
+To run multiple ducks simultaneously in the same Genesis world:
+
+```bash
+cd path/to/microduck
+export DUCK_SIM_RL=$(pwd)/../microduck_genesis
+
+# Launch 4 ducks with host daemons and inter-duck radio
+DUCK_SIM_DUCKS=4 ./scripts/duck-sim
+```
+
+> [!NOTE]
+> In `scripts/duck-sim`, positional arguments for duck count (e.g. `./duck-sim boot 4`) apply only to the containerized `boot` command. For host daemon runs (`./duck-sim` or `./duck-sim up`), duck count is controlled via the `DUCK_SIM_DUCKS` environment variable (`DUCK_SIM_DUCKS=4 ./scripts/duck-sim`).
+
+**What happens under the hood:**
+- **Scene Placement:** Genesis spawns 4 robot instances (`duck-a`, `duck-b`, `duck-c`, `duck-d`) spaced along the Y-axis (0.5 m spacing) with full mutual physics collision.
+- **Port Allocation:** Sockets are allocated starting from base port 7801 (`7801 + i`):
+  - `duck-a`: TCP port 7801, socket `~/.cache/duck-sim/duck-a.sock`
+  - `duck-b`: TCP port 7802, socket `~/.cache/duck-sim/duck-b.sock`
+  - `duck-c`: TCP port 7803, socket `~/.cache/duck-sim/duck-c.sock`
+  - `duck-d`: TCP port 7804, socket `~/.cache/duck-sim/duck-d.sock`
+- **Radio Mesh (`duck-ether`):** An inter-duck virtual radio network connects all active `robotd` daemons so they can exchange chorale and beacon packets.
+- **Early Socket Binding:** `microduck_genesis` binds all TCP server sockets immediately on launch while the Genesis scene compiles in parallel, ensuring `duck-sim`'s health probe (`wait_for_port`) passes reliably without timing out.
 
 ---
 
